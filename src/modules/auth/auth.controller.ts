@@ -1,10 +1,11 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { AuthResponseDto } from './dto/authResponse.dto';
 import { RefreshTokenGuard } from './guards/refreshToken.guard';
 import { GetUser } from 'src/common/decorators/get-user.decorator';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
+import { LoginDto } from './dto/login.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -12,22 +13,33 @@ export class AuthController {
 
     // Register api end-point
     @Post('register')
+    @HttpCode(201)
     async register(@Body() registerDto: RegisterDto): Promise<AuthResponseDto> {
         return this.authSevice.register(registerDto);
     }
 
     // Refresh access-token api end-point
     @Post('refresh')
+    @HttpCode(HttpStatus.OK)
     @UseGuards(RefreshTokenGuard)
     async refresh(@GetUser('id') userId: string): Promise<AuthResponseDto> {
         return await this.authSevice.refreshTokens(userId);
     }
-
+    
     // Logout api end-point
+    @HttpCode(HttpStatus.OK)
     @Post('logout')
     @UseGuards(JwtAuthGuard) 
     async logout(userId: string): Promise<{message: string}> {
         await this.authSevice.logout(userId);
         return {message: 'user logged out successfully'}
     }
+    
+    // Logout api end-point
+    @HttpCode(HttpStatus.OK)
+    @Post('login')
+    async login(@Body() loginDto: LoginDto): Promise<AuthResponseDto> {
+        return await this.authSevice.login(loginDto);
+    }
+    
 }

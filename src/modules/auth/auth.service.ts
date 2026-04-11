@@ -5,6 +5,7 @@ import { AuthResponseDto } from './dto/authResponse.dto';
 import bcrypt from 'bcrypt'
 import { JwtService } from '@nestjs/jwt';
 import { randomBytes } from 'crypto';
+import { LoginDto } from './dto/login.dto';
 
 @Injectable()
 export class AuthService {
@@ -128,5 +129,34 @@ export class AuthService {
                 refreshToken: null
             }
         })
+    }
+
+    async login(loginDto: LoginDto): Promise<AuthResponseDto> {
+        const {email, password} = loginDto;
+        const user = await this.prisma.user.findUnique({
+            where: {email},
+        });
+        if(!user) {
+            throw new UnauthorizedException('Invalid credentials');
+        }
+
+        const isPasswordMatch = await bcrypt.compare(password, user.password);
+        if(!isPasswordMatch || !user) {
+            throw new UnauthorizedException('Invalid credentials')
+        }
+
+        const tokens = await this.generateTokens(user.id, user.email);
+        await this.updateRefreshToken(user.id, tokens.refreshToken);
+
+        return {
+            ...tokens,
+            user: {
+                id: user.id,
+                email: user.email,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                role: user.role
+            }
+        }
     }
 }
