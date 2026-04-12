@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CategoryService } from './category.service';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
@@ -8,6 +8,7 @@ import { Role } from '@prisma/client';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { CategoryResponseDto } from './dto/category-response.dto';
 import { QueryCategoryDto } from './dto/query-category.dto';
+import { UpdateCategoryDto } from './dto/update-category.dto';
 
 
 @ApiTags('Categories')
@@ -99,5 +100,34 @@ export class CategoryController {
     })
     async getCategoryBySlug(@Param('slug') slug: string): Promise<CategoryResponseDto> {
         return await this.categoryService.findCategoryBySlug(slug)
+    }
+
+    // Update Category (for admins)
+    @Patch(':id')
+    @UseGuards(JwtAuthGuard, RoleGuard)
+    @Roles(Role.ADMIN)
+    @ApiBearerAuth('JWT-auth')
+    @ApiOperation({summary: 'Update Category (for admins)'})
+    @ApiBody({
+        type: UpdateCategoryDto
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Category updated successfully',
+        type: CategoryResponseDto
+    })
+    @ApiResponse({
+        status: 404,
+        description: 'Category not found',
+    })
+    @ApiResponse({
+        status: 409,
+        description: 'Category sulg already exists',
+    })
+    async updateCategory(
+        @Param('id') id: string, 
+        @Body() updateCategoryDto: UpdateCategoryDto
+    ): Promise<CategoryResponseDto> {
+        return await this.categoryService.update(id, updateCategoryDto);
     }
 }
