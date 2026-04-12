@@ -87,7 +87,7 @@ export class CategoryController {
 
     @Get('slug/:slug')
     @ApiOperation({
-        summary: 'Get category by id'
+        summary: 'Get category by slug'
     })
     @ApiResponse({
         status: 200,
