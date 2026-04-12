@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CategoryService } from './category.service';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
@@ -129,5 +129,22 @@ export class CategoryController {
         @Body() updateCategoryDto: UpdateCategoryDto
     ): Promise<CategoryResponseDto> {
         return await this.categoryService.update(id, updateCategoryDto);
+    }
+
+    // Delete a category (for admins)
+    @Delete(':id')
+    @UseGuards(JwtAuthGuard, RoleGuard)
+    @Roles(Role.ADMIN)
+    @ApiBearerAuth('JWT-auth')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Deletes a category (for Admins only)' })
+    @ApiResponse({
+        status: 400,
+        description: 'cannot delete catergory with products',
+    }) 
+    async deleteCategory(@Param('id') id: string): Promise<{
+        message: string
+    }> {
+        return this.categoryService.delete(id);
     }
 }
