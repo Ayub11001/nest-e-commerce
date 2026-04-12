@@ -31,7 +31,7 @@ export class CategoryController {
     @ApiResponse({ status: 400, description: 'Invalid input data.' })
     @ApiResponse({ status: 401, description: 'Unauthorized.' })
     @ApiResponse({ status: 403, description: 'Forbidden.' })
-    async createCategory(createCategoryDto: CreateCategoryDto): Promise<CategoryResponseDto> {
+    async createCategory(@Body() createCategoryDto: CreateCategoryDto): Promise<CategoryResponseDto> {
         return await this.categoryService.create(createCategoryDto);
     }
 

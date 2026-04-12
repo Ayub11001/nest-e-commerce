@@ -102,6 +102,7 @@ export class CategoryService {
     }
 
     async findCategoryBySlug(slug: string): Promise<CategoryResponseDto> {
+        slug = slug.toLowerCase()
         const category = await this.prisma.category.findUnique({
             where: {slug},
             include: {
@@ -141,7 +142,7 @@ export class CategoryService {
         }
 
         const updatedCategory = await this.prisma.category.update({
-            where: {slug: updateCategoryDto.slug},
+            where: {id},
             data: updateCategoryDto,
             include: {
                 _count: {
