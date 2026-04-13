@@ -53,7 +53,12 @@ export class ProductsService {
         const where: Prisma.ProductWhereInput = {}
 
         if(category) {
-            where.categoryId = category
+            where.category = {
+                name: {
+                    equals: category,
+                    mode: 'insensitive'
+                }
+            }
         }
         if(isActive !== undefined) {
             where.isActive = isActive
@@ -179,7 +184,15 @@ export class ProductsService {
         const product = await this.prisma.product.findUnique({
             where: {id},
             include: {
-                orderItems: true,
+                orderItems: {
+                    where: {
+                        order: {
+                            status: {
+                                notIn: ['CANCELLED', 'DELIVERED']
+                            }
+                        }
+                    }
+                },
                 cartItems: true
             }
         });

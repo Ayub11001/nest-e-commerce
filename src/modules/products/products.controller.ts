@@ -131,7 +131,7 @@ export class ProductsController {
     }
 
     // Update Stock of the product (For admin only)
-    @Patch(':id')
+    @Patch(':id/stock')
     @UseGuards(JwtAuthGuard, RoleGuard)
     @Roles(Role.ADMIN)
     @ApiBearerAuth('JWT-auth')
@@ -191,7 +191,7 @@ export class ProductsController {
         status: 400,
         description: 'Cannot delete product in active order'
     })
-    async deleteProduct(@Param(':id') id: string): Promise<{
+    async deleteProduct(@Param('id') id: string): Promise<{
         message: string
     }> {
         return await this.productService.remove(id);
