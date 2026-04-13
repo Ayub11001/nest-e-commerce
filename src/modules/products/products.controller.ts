@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ProductsService } from './products.service';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
@@ -170,4 +170,30 @@ export class ProductsController {
         return await this.productService.updateStock(id, quantity);
     }
 
+    // Delete a product (for Admin only)
+    @Delete(':id')
+    @UseGuards(JwtAuthGuard, RoleGuard)
+    @Roles(Role.ADMIN)
+    @ApiBearerAuth('JWT-auth')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({
+        summary: 'Delete a product (for a Admin)'
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Deleted product successfully'
+    })
+    @ApiResponse({
+        status: 404,
+        description: 'Product not found'
+    })
+    @ApiResponse({
+        status: 400,
+        description: 'Cannot delete product in active order'
+    })
+    async deleteProduct(@Param(':id') id: string): Promise<{
+        message: string
+    }> {
+        return await this.productService.remove(id);
+    }
 }
