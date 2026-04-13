@@ -1,10 +1,12 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { ProductResponseDto } from './dto/response-product.dto';
 import { Category, Prisma, Product } from '@prisma/client';
 import { QueryProductDto } from './dto/query-product.dto';
 import { serialize } from 'v8';
+import { NotFoundError } from 'rxjs';
+import { UpdateProductDto } from './dto/update-porduct.dto';
 
 @Injectable()
 export class ProductsService {
@@ -93,6 +95,59 @@ export class ProductsService {
             }
         }
 
+    }
+
+    async findOne(id: string): Promise<ProductResponseDto> {
+        const product = await this.prisma.product.findUnique({
+            where: {id},
+            include: {
+                category: true
+            }
+        });
+        if(!product) {
+            throw new NotFoundException('Product not found')
+        }
+
+        return this.formatProduct(product)
+    }
+
+    async update(
+        id: string, 
+        updateProductDto: UpdateProductDto   
+    ): Promise<ProductResponseDto> {
+        const existingProduct = await this.prisma.product.findUnique({
+            where: {id}
+        })
+        if(!existingProduct) {
+            throw new NotFoundException('Product not found');
+        }
+
+        if(
+            updateProductDto.sku && 
+            existingProduct.sku !== updateProductDto.sku
+        ) {
+            const existingSku = await this.prisma.product.findUnique({
+            where: {sku: updateProductDto.sku}
+            });
+            if(existingSku) {
+                throw new ConflictException(`Product with sku ${updateProductDto.sku} already exists`)
+            }
+        }
+
+        const updateData: any = { ...updateProductDto };
+        if(updateProductDto.price !== undefined) {
+            updateData.price = new Prisma.Decimal(updateProductDto.price)
+        }
+
+        const updatedProduct = await this.prisma.product.update({
+            where: {id},
+            data: updateData,
+            include: {
+                category: true
+            }
+        })
+
+        return this.formatProduct(updatedProduct);
     }
 
     private formatProduct(product: Product & {category: Category}): ProductResponseDto {

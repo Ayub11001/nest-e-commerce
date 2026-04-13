@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ProductsService } from './products.service';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
@@ -8,6 +8,7 @@ import { Roles } from 'src/common/decorators/role.decorator';
 import { CreateProductDto } from './dto/create-product.dto';
 import { ProductResponseDto } from './dto/response-product.dto';
 import { QueryProductDto } from './dto/query-product.dto';
+import { UpdateProductDto } from './dto/update-porduct.dto';
 
 @ApiTags('products')
 @Controller('products')
@@ -79,5 +80,53 @@ export class ProductsController {
         }
     }> {
         return this.productService.findAll(queryProductDto);
+    }
+
+    // Get a product by Id
+    @Get(':id')
+    @ApiOperation({
+        summary: 'Fetch fa product by its id'
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Product detaials',
+        type: ProductResponseDto
+    })
+    @ApiResponse({
+        status: 404,
+        description: 'Product not found',
+    })
+    async findById(@Param('id') id: string): Promise<ProductResponseDto> {
+        return await this.productService.findOne(id);
+    }
+
+    @Patch(':id')
+    @UseGuards(JwtAuthGuard, RoleGuard)
+    @Roles(Role.ADMIN)
+    @ApiBearerAuth('JWT-auth')
+    @ApiOperation({
+        summary: 'Update a product (for Admin only)'
+    })
+    @ApiBody({
+        type: UpdateProductDto
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Updated product successfully',
+        type: ProductResponseDto
+    })
+    @ApiResponse({
+        status: 404,
+        description: 'Product not found'
+    })
+    @ApiResponse({
+        status: 409,
+        description: 'sku already exists'
+    })
+    async update(
+        @Param('id') id: string,
+        @Body() updateProductDto: UpdateProductDto 
+    ): Promise<ProductResponseDto> {
+        return await this.productService.update(id, updateProductDto);
     }
 }
