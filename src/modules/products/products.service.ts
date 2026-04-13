@@ -1,12 +1,11 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { ProductResponseDto } from './dto/response-product.dto';
 import { Category, Prisma, Product } from '@prisma/client';
 import { QueryProductDto } from './dto/query-product.dto';
-import { serialize } from 'v8';
-import { NotFoundError } from 'rxjs';
 import { UpdateProductDto } from './dto/update-porduct.dto';
+import { retry } from 'rxjs';
 
 @Injectable()
 export class ProductsService {
@@ -146,6 +145,30 @@ export class ProductsService {
                 category: true
             }
         })
+
+        return this.formatProduct(updatedProduct);
+    }
+
+    async updateStock(id: string, quantity: number): Promise<ProductResponseDto> {
+        const product = await this.prisma.product.findUnique({
+            where: {id},
+        });
+        if(!product) {
+            throw new NotFoundException('Product not found');
+        }
+
+        const newStock: number = product.stock + quantity;
+        if(newStock < 0) {
+            throw new BadRequestException('Insufficeint stock')
+        }
+
+        const updatedProduct = await this.prisma.product.update({
+            where: {id},
+            data: {stock: newStock},
+            include: {
+                category: true
+            }
+        });
 
         return this.formatProduct(updatedProduct);
     }
