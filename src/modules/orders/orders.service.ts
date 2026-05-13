@@ -2,7 +2,8 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateOrderDto } from './dto/createOrder.dto';
 import { OrderApiResponseDto, OrderResponseDto } from './dto/order-response.dto';
-import { Order, OrderItem, OrderStatus, Product, User } from '@prisma/client';
+import { Order, OrderItem, OrderStatus, Prisma, Product, User } from '@prisma/client';
+import { QueryOrderDto } from './dto/queryOrder.dto';
 
 @Injectable()
 export class OrdersService {
@@ -59,13 +60,7 @@ export class OrdersService {
                                 product: true
                             }
                         },
-                        user: {
-                            select: {
-                                email: true, 
-                                firstName: true,
-                                lastName: true
-                            }
-                        },
+                        user: true,
                     }
                 });
 
@@ -84,14 +79,63 @@ export class OrdersService {
         return this.wrap(order);
     }
 
+    async getAll(query: QueryOrderDto): Promise<{
+        data: OrderResponseDto[];
+        page: number;
+        limit: number;
+        total: number;
+    }> {
+        const {
+            page = 1, 
+            limit = 10,
+            status,
+            search
+        } = query;
+        const skip: number = (page-1) * limit;
+
+        const where: Prisma.OrderWhereInput = {};
+        if (status) where.status = status;
+        if (search) where.OR = [
+            { id: { contains: search, mode: 'insensitive' } },
+            { orderNumber: { contains: search, mode: 'insensitive' } }
+        ];
+
+        const [ orders, total ] = await Promise.all([
+            this.prisma.order.findMany({
+                where,
+                skip,
+                take: limit,
+                include: {
+                    orderItems: {
+                        include: {
+                            product: true,
+                        },
+                    },
+                    user: true,
+                },
+                orderBy: { createdAt: "desc" },
+            }),
+
+            this.prisma.order.count({where}),
+        ]);
+
+        return {
+            data: orders.map(
+                order => this.map(order)
+            ),
+            total,
+            page,
+            limit
+        }
+    }
+
+
+
+
     private wrap(
         order: Order & { 
             orderItems: (OrderItem & { product: Product })[];
-            user: {
-                email: string,
-                firstName: string | null,
-                lastName: string | null
-            }
+            user: User
         }
     ): OrderApiResponseDto<OrderResponseDto> { 
         return {
@@ -104,11 +148,7 @@ export class OrdersService {
     private map(
         order: Order & { 
             orderItems: (OrderItem & { product: Product })[];
-            user: {
-                email: string,
-                firstName: string | null,
-                lastName: string | null
-            } 
+            user: User 
         }
     ): OrderResponseDto {
         return {
