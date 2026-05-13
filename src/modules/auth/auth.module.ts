@@ -9,7 +9,12 @@ import { RefreshTokenStrategy } from './strategies/refreshToken.stragegy';
 import { RefreshTokenGuard } from './guards/refreshToken.guard';
 
 @Module({
-  providers: [AuthService, JwtStrategy, RefreshTokenStrategy, RefreshTokenGuard],
+  providers: [
+    AuthService, 
+    JwtStrategy, 
+    RefreshTokenStrategy, 
+    RefreshTokenGuard
+  ],
   controllers: [AuthController],
   imports: [
     JwtModule.registerAsync({

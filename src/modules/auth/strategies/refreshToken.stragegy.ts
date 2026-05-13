@@ -30,7 +30,7 @@ export class RefreshTokenStrategy extends PassportStrategy(Strategy, 'jwt-refres
             refreshId: string
         }
     ) {
-        console.log('Refresh strategy executed');
+        //console.log('Refresh strategy executed');
         const authHeaders = req.headers.authorization;
         if(!authHeaders) {
             throw new UnauthorizedException('No refresh-token received')

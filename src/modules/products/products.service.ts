@@ -127,7 +127,7 @@ export class ProductsService {
         }
 
         if(
-            updateProductDto.sku && 
+            updateProductDto && 
             existingProduct.sku !== updateProductDto.sku
         ) {
             const existingSku = await this.prisma.product.findUnique({
@@ -139,7 +139,7 @@ export class ProductsService {
         }
 
         const updateData: any = { ...updateProductDto };
-        if(updateProductDto.price !== undefined) {
+        if(updateProductDto && updateProductDto.price !== undefined) {
             updateData.price = new Prisma.Decimal(updateProductDto.price)
         }
 
