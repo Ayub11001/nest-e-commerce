@@ -177,7 +177,7 @@ export class OrdersController {
         return await this.orderService.getAllByUserId(query, userId)
     }
 
-    @Get(':id')
+    @Get('admin/:id')
     @Roles(Role.ADMIN)
     @RelaxedThrottle()
     @ApiOperation({
@@ -219,11 +219,11 @@ export class OrdersController {
         return await this.orderService.getById(id, userId)
     }
 
-    @Patch('admin/:id')
+    @Patch('admin/update/:id')
     @Roles(Role.ADMIN)
     @ModerateThrottle()
     @ApiOperation({
-        summary: "Update any order bu id for admin"
+        summary: "Update any order by id for admin"
     })
     @ApiParam({
         name: "id", // order-id
@@ -250,7 +250,7 @@ export class OrdersController {
     }
 
 
-    @Patch(':id') // order-id
+    @Patch('update/:id') // order-id
     @ModerateThrottle()
     @ApiOperation({
         description: "Update your own order",
