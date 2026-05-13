@@ -1,9 +1,11 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateOrderDto } from './dto/createOrder.dto';
 import { OrderApiResponseDto, OrderResponseDto } from './dto/order-response.dto';
 import { Order, OrderItem, OrderStatus, Prisma, Product, User } from '@prisma/client';
 import { QueryOrderDto } from './dto/queryOrder.dto';
+import { UpdateOrderDto } from './dto/update-order.dto';
+import { run } from 'node:test';
 
 @Injectable()
 export class OrdersService {
@@ -129,8 +131,157 @@ export class OrdersService {
         }
     }
 
+    async getAllByUserId(query: QueryOrderDto, userId: string): Promise<{
+        data: OrderResponseDto[];
+        page: number;
+        limit: number;
+        total: number;
+    }> {
+        const {
+            page = 1,
+            limit = 10,
+            search,
+            status
+        } = query;
+        const skip = (page-1)*limit;
+
+        const where: Prisma.OrderWhereInput = { userId };
+        if (search) where.OR = [
+            { orderNumber: { contains: search, mode: 'insensitive' } },
+            { id: { contains: search, mode: 'insensitive' } },
+        ]
+        if (status) where.status = status;
+
+        const [ orders, total ] = await Promise.all([
+            this.prisma.order.findMany({
+                where,
+                take: limit,
+                skip,
+                include: {
+                    orderItems: {
+                        include: {
+                            product: true,
+                        },
+                    },
+                    user: true,
+                },
+                orderBy: { createdAt: 'desc' }
+            }),
+
+            this.prisma.order.count({where})
+        ]);
+
+        return {
+            data: orders.map(
+                order => this.map(order)
+            ),
+            limit,
+            page,
+            total,
+        }
+    }
+
+    async getById(id: string, userId?: string)
+    : Promise<OrderApiResponseDto<OrderResponseDto>> {
+        const where: Prisma.OrderWhereInput = { id };
+        if(userId) where.userId = userId;
+
+        const order = await this.prisma.order.findFirst({
+            where,
+            include: {
+                orderItems: {
+                    include: {
+                        product: true,
+                    },
+                },
+                user: true,
+            },
+        });
+
+        if (!order) {
+            throw new NotFoundException(`Oder with Id ${id} not found`);
+        }
+
+        return this.wrap(order)
+    }
+
+    async update(
+        id: string,
+        updateDto: UpdateOrderDto,
+        userId?: string, 
+    ): Promise<OrderApiResponseDto<OrderResponseDto>> {
+        const where: Prisma.OrderWhereUniqueInput = { id };
+        if(userId) where.userId = userId;
+
+        const existing = await this.prisma.order.findUnique({ where });
+        if(!existing) {
+            throw new NotFoundException(`Order with order id ${id} not found`);
+        }
+
+        const updated = await this.prisma.order.update({
+            where,
+            data: updateDto,
+            include: {
+                orderItems: {
+                    include: {
+                        product: true,
+                    },
+                },
+                user: true,
+            },
+        });
+
+        return this.wrap(updated);
+    }
 
 
+    async cancel(id: string, userId?: string)
+    : Promise<OrderApiResponseDto<OrderResponseDto>> {
+        const where: Prisma.OrderWhereUniqueInput = {id};
+        if(userId) where.userId = userId;
+
+        const order = await this.prisma.order.findUnique({ 
+            where,
+            include: {
+                orderItems: true,
+                user: true,
+            }
+        });
+        if(!order) {
+            throw new NotFoundException(`Order with order-id ${id} not found`);
+        }
+
+        if(order.status !== OrderStatus.PENDING) {
+            throw new ForbiddenException(`Only pending orders can be cancelled, this order is ${order.status}`)
+        }
+        const cancelled = await this.prisma.$transaction(
+            async tx => {
+                await Promise.all(
+                    order.orderItems.map(
+                        item => tx.product.update({
+                            where: { id: item.productId },
+                            data: { stock: { increment: item.quantity }},
+                        })
+                    )
+                );
+
+                return await tx.order.update({
+                    where: { id },
+                    data: { status: OrderStatus.CANCELLED },
+                    include: {
+                        orderItems: {
+                            include: {
+                                product: true,
+                            },
+                        },
+                        user: true,
+                    }
+                });
+            }
+        );
+
+        return this.wrap(cancelled)
+    }
 
     private wrap(
         order: Order & { 
